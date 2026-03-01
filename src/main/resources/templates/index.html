@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión RH - Universidad Ciudadana</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 20px; color: #333; }
+        .container { max-width: 1450px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); }
+        h1 { color: #2c3e50; text-align: center; font-size: 2.5rem; margin-bottom: 30px; }
+        h2 { color: #009879; border-bottom: 3px solid #009879; padding-bottom: 10px; margin-top: 40px; margin-bottom: 25px; }
+        .banner { padding: 15px 25px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; font-weight: 600; }
+        .banner-admin { background-color: #e6f7f4; border: 1px solid #009879; color: #00796b; }
+        .banner-empleado { background-color: #fff9db; border: 1px solid #f59f00; color: #e67e22; }
+        .btn-logout { color: #d9534f; text-decoration: none; border: 2px solid #d9534f; padding: 6px 12px; border-radius: 6px; transition: 0.3s; }
+        .btn-logout:hover { background-color: #d9534f; color: white; }
+        .login-container { display: flex; gap: 30px; justify-content: center; margin-top: 50px; margin-bottom: 50px; }
+        .login-box { padding: 40px; border-radius: 12px; width: 350px; text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; font-size: 1rem; }
+        .form-registro { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; background: #f8fafc; padding: 25px; border-radius: 10px; border: 1px solid #e2e8f0; }
+        .form-registro label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; font-size: 0.9em; }
+        .form-registro input, .form-registro select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box; }
+        .btn-submit { grid-column: span 4; background-color: #009879; color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; margin-top: 10px; }
+        .table-wrapper { overflow-x: auto; margin-top: 25px; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.95em; }
+        thead tr { background-color: #009879; color: #ffffff; text-align: left; }
+        th, td { padding: 15px 10px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        tbody tr:hover { background-color: #f1fdfa; transition: background 0.2s; }
+        .view-text { display: inline-block; font-weight: 500; }
+        .edit-input { display: none; width: 100%; padding: 8px; border: 1px solid #009879; border-radius: 4px; font-size: 0.95em; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Directorio Corporativo</h1>
+
+    <div th:if="${!isAdmin and !isEmpleado}" class="login-container">
+        <div class="login-box" style="background-color: #fffaf0; border: 1px solid #fbd38d;">
+            <h2 style="color: #c05621; border: none; margin-top: 0;">👤 Soy Empleado</h2>
+            <p style="color: #7b341e; font-size: 0.9em; margin-bottom: 20px;">Consulta tu información.</p>
+            <form th:action="@{/loginEmpleado}" method="post">
+                <label>
+                    <input type="text" name="idEmpleado" placeholder="Tu número de ID (Ej: 15151)" required>
+                </label>
+                <button type="submit" style="background-color: #ed8936;">Entrar al Directorio</button>
+            </form>
+        </div>
+
+        <div class="login-box" style="background-color: #ebf8ff; border: 1px solid #90cdf4;">
+            <h2 style="color: #2b6cb0; border: none; margin-top: 0;">🔒 Soy Admin RH</h2>
+            <p style="color: #2a4365; font-size: 0.9em; margin-bottom: 20px;">Gestión de personal.</p>
+            <form th:action="@{/loginAdmin}" method="post">
+                <label>
+                    <input type="password" name="password" placeholder="Contraseña de acceso (1234)" required>
+                </label>
+                <button type="submit" style="background-color: #3182ce;">Entrar al Sistema</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${isAdmin}" class="banner banner-admin">
+        <span>✅ MODO ADMINISTRADOR: Permisos totales de modificación activados.</span>
+        <a th:href="@{/logout}" class="btn-logout">Cerrar Sesión 🚪</a>
+    </div>
+
+    <div th:if="${isEmpleado}" class="banner banner-empleado">
+        <span>👋 Bienvenido, <span th:text="${empleadoActual.nombre}"></span>. Estás viendo tus datos personales.</span>
+        <a th:href="@{/logout}" class="btn-logout">Cerrar Sesión 🚪</a>
+    </div>
+
+    <div th:if="${error}" style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: bold; text-align: center;">
+        <span th:text="${error}"></span>
+    </div>
+
+    <div th:if="${exito}" style="background-color: #d1fae5; border: 1px solid #10b981; color: #047857; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-weight: bold; text-align: center;">
+        <span th:text="${exito}"></span>
+    </div>
+
+    <div th:if="${isAdmin}">
+        <h2>Registrar Nuevo Empleado</h2>
+        <form th:action="@{/agregar}" th:object="${empleado}" method="post" class="form-registro">
+            <div><label for="reg_id">ID de Empleado</label><input type="text" id="reg_id" th:field="*{numeroEmpleado}" required></div>
+            <div><label for="reg_nom">Nombre Completo</label><input type="text" id="reg_nom" th:field="*{nombre}" required></div>
+            <div><label for="reg_dep">Departamento</label><input type="text" id="reg_dep" th:field="*{departamento}" required></div>
+            <div><label for="reg_sal">Salario Mensual</label><input type="number" step="0.01" id="reg_sal" th:field="*{salario}" required></div>
+            <div><label for="reg_ing">Fecha de Ingreso</label><input type="date" id="reg_ing" th:field="*{fechaIngreso}" required></div>
+            <div><label for="reg_salida">Fecha de Salida (Opcional)</label><input type="date" id="reg_salida" th:field="*{fechaSalida}"></div>
+            <div style="grid-column: span 2;"><label for="reg_fun">Puesto / Funciones</label><input type="text" id="reg_fun" th:field="*{funciones}"></div>
+            <div style="grid-column: span 2;"><label for="reg_jefe">Jefe Directo</label><input type="text" id="reg_jefe" th:field="*{jefeDirecto}"></div>
+
+            <hr style="grid-column: span 4; width: 100%; border-top: 1px solid #cbd5e1;">
+            <h5 style="grid-column: span 4; margin-top: 0; margin-bottom: 0; color: #009879;">Datos Específicos del Puesto</h5>
+
+            <div>
+                <label>Tipo de Empleado:</label>
+                <label>
+                    <select name="tipoEmpleado">
+                        <option value="Normal">Empleado Normal</option>
+                        <option value="Gerente">Gerente (Jefatura)</option>
+                        <option value="Becario">Becario (Estudiante)</option>
+                    </select>
+                </label>
+            </div>
+
+            <div>
+                <label>Universidad (Solo Becarios):</label>
+                <label>
+                    <input type="text" name="universidad">
+                </label>
+            </div>
+
+            <div>
+                <label>Horas (Solo Becarios):</label>
+                <label>
+                    <input type="number" name="horasServicio" value="0">
+                </label>
+            </div>
+
+            <button type="submit" class="btn-submit">Guardar Nuevo Colaborador</button>
+        </form>
+    </div>
+
+    <div th:if="${isEmpleado and empleadoActual != null and empleadoActual.tipo == 'Gerente'}">
+        <h2 style="color: #d97706; border-bottom: 3px solid #d97706; margin-top: 0;">🔔 Autorizaciones Pendientes</h2>
+
+        <div style="background: #fffbeb; padding: 20px; border-radius: 8px; border: 1px solid #fcd34d; margin-bottom: 30px;">
+            <p style="color: #92400e; margin-top: 0; font-weight: bold;">Lista de Solicitudes:</p>
+
+            <table style="width: 100%; background: white; border-radius: 6px; overflow: hidden;">
+                <tr style="background-color: #f59e0b; color: white;">
+                    <th style="padding: 10px;">Empleado</th>
+                    <th>Puesto</th>
+                    <th>Sueldo Actual</th>
+                    <th>Aumento Solicitado</th>
+                    <th>Acción</th>
+                </tr>
+                <tr th:each="emp : ${empleados}" th:if="${emp.aumentoPendiente > 0}">
+                    <td th:text="${emp.nombre}" style="padding: 10px; font-weight: bold;"></td>
+                    <td th:text="${emp.funciones}"></td>
+                    <td th:text="'$' + ${emp.salario}"></td>
+                    <td th:text="'+$' + ${emp.aumentoPendiente}" style="color: #059669; font-weight: bold; font-size: 1.1em;"></td>
+                    <td>
+                        <form th:action="@{/autorizarAumento}" method="post" style="margin: 0;">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
+                            <input type="hidden" name="idGerente" th:value="${empleadoActual.numeroEmpleado}">
+                            <button type="submit" style="background-color: #059669; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                ✅ Aprobar Aumento
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div th:if="${isAdmin or isEmpleado}">
+        <h2>Directorio de Empleados</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Depto.</th>
+                    <th>Ingreso</th>
+                    <th>Estatus</th>
+                    <th>Antigüedad</th>
+                    <th>Vacaciones</th>
+                    <th>Puesto</th>
+                    <th>Universidad</th>
+                    <th>Horas</th>
+                    <th>Jefe Directo</th>
+                    <th>Sueldo</th>
+                    <th th:if="${isAdmin}">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="emp : ${empleados}" th:if="${isAdmin or (isEmpleado and empleadoActual != null and (empleadoActual.tipo == 'Gerente' or emp.numeroEmpleado == empleadoActual.numeroEmpleado))}">
+
+                    <td th:text="${emp.numeroEmpleado}" style="font-weight: bold; color: #4a5568;"></td>
+
+                    <td>
+                        <span class="view-text" th:text="${emp.nombre}"></span>
+                        <label><input th:if="${isAdmin}" type="text" name="nombre" th:value="${emp.nombre}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                    </td>
+
+                    <td>
+                        <span class="view-text" th:text="${emp.departamento}"></span>
+                        <label><input th:if="${isAdmin}" type="text" name="departamento" th:value="${emp.departamento}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                    </td>
+
+                    <td th:text="${emp.fechaIngreso != null ? #temporals.format(emp.fechaIngreso, 'dd/MM/yyyy') : 'N/A'}"></td>
+
+                    <td><span th:text="${emp.estatus}" th:style="${emp.estatus == 'ACTIVO' ? 'color:#38a169; font-weight:bold;' : 'color:#e53e3e; font-weight:bold;'}"></span></td>
+
+                    <td th:text="${emp.antiguedad}"></td>
+
+                    <td th:text="${emp.vacaciones} + ' días'" style="color: #2b6cb0; font-weight: 600;"></td>
+
+                    <td>
+                        <span class="view-text" th:text="${emp.funciones}"></span>
+                        <label><input th:if="${isAdmin}" type="text" name="funciones" th:value="${emp.funciones}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                    </td>
+
+                    <td>
+                        <span th:if="${emp.tipo == 'Becario'}" th:text="${emp.universidad}" style="color: #64748b; font-weight: 500;"></span>
+                        <span th:if="${emp.tipo != 'Becario'}">-</span>
+                    </td>
+
+                    <td>
+                        <span th:if="${emp.tipo == 'Becario'}" th:text="${emp.horasServicio} + ' hrs'" style="color: #6366f1; font-weight: bold;"></span>
+                        <span th:if="${emp.tipo != 'Becario'}">-</span>
+                    </td>
+
+                    <td>
+                        <span class="view-text" th:text="${emp.jefeDirecto}"></span>
+                        <label><input th:if="${isAdmin}" type="text" name="jefeDirecto" th:value="${emp.jefeDirecto}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                    </td>
+
+                    <td>
+                        <span class="view-text" th:text="'$' + ${emp.salario}"></span>
+                        <div th:if="${isAdmin}" class="edit-input" style="display:none; padding:0; border:none; background:transparent;">
+                            $<label><input type="number" step="0.01" name="salario" th:value="${emp.salario}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" style="width: 80px; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #64748b;" readonly></label>
+                        </div>
+                    </td>
+
+                    <td th:if="${isAdmin}" style="white-space: nowrap; min-width: 140px;">
+                        <button type="button" onclick="activarEdicion(this)" style="background-color: #3b82f6; color: white; padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">
+                            ✏️ Modificar
+                        </button>
+
+                        <form th:id="|form-edit-${emp.numeroEmpleado}|" th:action="@{/actualizarEmpleado}" method="post" class="form-guardar-custom" style="display: none; margin: 0;">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
+                            <button type="submit" style="background-color: #f59e0b; color: white; padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">
+                                💾 Guardar
+                            </button>
+                        </form>
+
+                        <form th:action="@{/solicitarAumento}" method="post" style="display: inline-block; margin-top: 10px;">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
+                            <label><input type="number" step="0.01" name="montoAumento" placeholder="$ Monto" required style="width: 85px; padding: 6px; border-radius: 4px; border: 1px solid #10b981;"></label>
+                            <button type="submit" style="background-color: #10b981; color: white; padding: 6px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">
+                                📈 Pedir Aumento
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // noinspection JSUnusedGlobalSymbols
+    function activarEdicion(botonClickeado) {
+        const fila = botonClickeado.closest('tr');
+        if(!fila) return;
+
+        const textos = fila.querySelectorAll('.view-text');
+        textos.forEach(t => t.style.display = 'none');
+
+        const inputs = fila.querySelectorAll('.edit-input');
+        inputs.forEach(i => i.style.display = 'inline-block');
+
+        botonClickeado.style.display = 'none';
+
+        const formGuardar = fila.querySelector('.form-guardar-custom');
+        if(formGuardar) formGuardar.style.display = 'inline-block';
+
+        fila.style.backgroundColor = "#fffde7";
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const hoy = new Date().toISOString().split("T")[0];
+        document.querySelectorAll('input[type="date"]').forEach(input => input.setAttribute("max", hoy));
+    });
+</script>
+
+</body>
+</html>
