@@ -103,57 +103,49 @@ public class HomeController {
     // ==========================
     // AGREGAR EMPLEADO (Solo Admin)
     // ==========================
-        @PostMapping("/agregar")
+    @PostMapping("/agregar")
     public String agregarEmpleado(@ModelAttribute Empleado empleadoBase,
                                   @RequestParam(required = false, defaultValue = "Normal") String tipoEmpleado,
                                   @RequestParam(required = false, defaultValue = "0.0") double presupuestoArea,
                                   @RequestParam(required = false, defaultValue = "") String universidad,
                                   @RequestParam(required = false, defaultValue = "0") int horasServicio,
                                   HttpSession session,
-                                  RedirectAttributes redirectAttributes) { // <-- SE AGREGA ESTE PARÁMETRO
+                                  RedirectAttributes redirectAttributes) {
 
         Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
 
         if (isAdmin != null && isAdmin) {
-
-            // 1. POLIMORFISMO: Creamos una variable de la clase Padre (Empleado)
-            //            // que podrá guardar un Empleado, un Gerente o un Becario.
             Empleado empleadoFinal;
-            // 2. LA DECISIÓN: Revisamos qué eligió el usuario en el formulario
-            if (tipoEmpleado.equals("Gerente")) {
-                //instanciamos la clase hija: Gerente
+
+            // POLIMORFISMO: Decidimos qué tipo de objeto crear
+            if ("Gerente".equals(tipoEmpleado)) {
                 empleadoFinal = new Gerente(
                         empleadoBase.getNumeroEmpleado(), empleadoBase.getNombre(),
                         empleadoBase.getDepartamento(), empleadoBase.getSalario(),
-                        empleadoBase.getFechaIngreso(), empleadoBase.getFechaSalida(),
+                        empleadoBase.getFechaIngreso(), null,
                         empleadoBase.getFunciones(), empleadoBase.getJefeDirecto(),
-                        presupuestoArea); // atributo exclusivo del gerente
-
-            } else if (tipoEmpleado.equals("Becario")) {
-                //instanciamos la clase hija: Becario
+                        presupuestoArea);
+            } else if ("Becario".equals(tipoEmpleado)) {
                 empleadoFinal = new Becario(
                         empleadoBase.getNumeroEmpleado(), empleadoBase.getNombre(),
                         empleadoBase.getDepartamento(), empleadoBase.getSalario(),
-                        empleadoBase.getFechaIngreso(), empleadoBase.getFechaSalida(),
+                        empleadoBase.getFechaIngreso(), null,
                         empleadoBase.getFunciones(), empleadoBase.getJefeDirecto(),
-                        universidad, horasServicio); //atributos exclusivos
+                        universidad, horasServicio);
             } else {
-                // si no es ninguno se queda como normal
                 empleadoFinal = empleadoBase;
             }
 
-            // guardamos el resultado
             boolean guardado = empleadoService.agregar(empleadoFinal);
 
             if (guardado) {
                 redirectAttributes.addFlashAttribute("exito", "✅ " + tipoEmpleado + " registrado correctamente.");
             } else {
-                redirectAttributes.addFlashAttribute("error", "⚠ ALERTA: El ID ya existe. Registro cancelado.");
+                redirectAttributes.addFlashAttribute("error", "⚠ ALERTA: El ID ya existe.");
             }
-        } // Cierra el if (isAdmin)
-
-            return "redirect:/";
-        } // Cierra el método agregarEmpleado
+        }
+        return "redirect:/";
+    } // Cierra el método agregarEmpleado
 
     // ==========================
     // ACTUALIZAR EMPLEADO (Solo Admin)
