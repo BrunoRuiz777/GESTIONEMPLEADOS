@@ -4,21 +4,24 @@ import com.example.gestionempleados.model.AdministradorRH;
 import com.example.gestionempleados.model.Empleado;
 import com.example.gestionempleados.model.Becario;
 import com.example.gestionempleados.model.Gerente;
-import com.example.gestionempleados.service.EmpleadoService;
+// Ya no usamos el EmpleadoService en memoria, usamos el Repositorio de BD
+import com.example.gestionempleados.repository.EmpleadoRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes; // <-- NUEVA IMPORTACIÓN
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Controller
 public class HomeController {
 
-    private final EmpleadoService empleadoService;
+    // Inyectamos la conexión directa a MySQL
+    private final EmpleadoRepository empleadoRepository;
 
-    // Instancia del Administrador de RH con privilegios "ALTO"
+    // Instancia del Administrador de RH con privilegios "ALTO" (Este se queda en memoria como "Dios" del sistema)
     private final AdministradorRH admin =
             new AdministradorRH("RH-01",
                     "Ana Gómez",
@@ -27,8 +30,9 @@ public class HomeController {
                     "ALTO",
                     "1234");
 
-    public HomeController(EmpleadoService empleadoService) {
-        this.empleadoService = empleadoService;
+    // Constructor para inyectar el repositorio
+    public HomeController(EmpleadoRepository empleadoRepository) {
+        this.empleadoRepository = empleadoRepository;
     }
 
     // ==========================
@@ -40,11 +44,10 @@ public class HomeController {
         Boolean isEmpleado = (Boolean) session.getAttribute("isEmpleado");
         Empleado empleadoActual = (Empleado) session.getAttribute("empleadoActual");
 
-        // 🛟 SALVAVIDAS: Si la sesión se corrompió en un reinicio y el empleado es nulo,
-        // forzamos el cierre de sesión simulado para evitar que Thymeleaf explote.
+        // 🛟 SALVAVIDAS: Si la sesión se corrompió
         if (empleadoActual == null) {
             isEmpleado = false;
-            isAdmin = (isAdmin != null && isAdmin); // Mantenemos isAdmin si era true
+            isAdmin = (isAdmin != null && isAdmin);
         }
 
         model.addAttribute("isAdmin", isAdmin != null && isAdmin);
@@ -52,7 +55,8 @@ public class HomeController {
         model.addAttribute("empleadoActual", empleadoActual);
 
         model.addAttribute("empleado", new Empleado());
-        model.addAttribute("empleados", empleadoService.obtenerTodos());
+        // Traemos todos los empleados reales desde la Base de Datos
+        model.addAttribute("empleados", empleadoRepository.findAll());
 
         return "index";
     }
@@ -69,7 +73,6 @@ public class HomeController {
             session.setAttribute("isEmpleado", false);
             session.removeAttribute("empleadoActual");
         }
-
         return "redirect:/";
     }
 
@@ -77,15 +80,16 @@ public class HomeController {
     // LOGIN EMPLEADO
     // ==========================
     @PostMapping("/loginEmpleado")
-    public String loginEmpleado(@RequestParam String idEmpleado,
+    public String loginEmpleado(@RequestParam Long idEmpleado, // Cambiado a Long por ser ID de BD
                                 HttpSession session) {
 
-        Empleado emp = empleadoService.buscarPorNumero(idEmpleado);
+        // Buscamos en la base de datos
+        Optional<Empleado> emp = empleadoRepository.findById(idEmpleado);
 
-        if (emp != null) {
+        if (emp.isPresent()) {
             session.setAttribute("isEmpleado", true);
             session.setAttribute("isAdmin", false);
-            session.setAttribute("empleadoActual", emp);
+            session.setAttribute("empleadoActual", emp.get());
         }
 
         return "redirect:/";
@@ -136,46 +140,44 @@ public class HomeController {
                 empleadoFinal = empleadoBase;
             }
 
-            boolean guardado = empleadoService.agregar(empleadoFinal);
-
-            if (guardado) {
-                redirectAttributes.addFlashAttribute("exito", "✅ " + tipoEmpleado + " registrado correctamente.");
-            } else {
-                redirectAttributes.addFlashAttribute("error", "⚠ ALERTA: El ID ya existe.");
+            // Guardamos en MySQL usando JPA
+            try {
+                empleadoRepository.save(empleadoFinal);
+                redirectAttributes.addFlashAttribute("exito", "✅ " + tipoEmpleado + " registrado correctamente en la Base de Datos.");
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error", "⚠ ALERTA: Error al guardar. Revisa que el número de empleado no esté repetido.");
             }
         }
         return "redirect:/";
-    } // Cierra el método agregarEmpleado
+    }
 
     // ==========================
     // ACTUALIZAR EMPLEADO (Solo Admin)
     // ==========================
     @PostMapping("/actualizarEmpleado")
-    public String actualizarEmpleado(@RequestParam String idEmpleado,
+    public String actualizarEmpleado(@RequestParam Long idEmpleado, // Cambiado a Long
                                      @RequestParam String nombre,
                                      @RequestParam String departamento,
                                      @RequestParam double salario,
                                      @RequestParam String funciones,
                                      @RequestParam String jefeDirecto,
                                      HttpSession session,
-                                     RedirectAttributes redirectAttributes) { // <-- SE AGREGA ESTE PARÁMETRO
+                                     RedirectAttributes redirectAttributes) {
 
         Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
 
         if (isAdmin != null && isAdmin) {
-            Empleado emp = empleadoService.buscarPorNumero(idEmpleado);
-            if (emp != null) {
-                admin.actualizarDatosEmpleado(emp,
-                        nombre,
-                        departamento,
-                        salario,
-                        funciones,
-                        jefeDirecto);
+            Optional<Empleado> optEmp = empleadoRepository.findById(idEmpleado);
 
-                // Mensaje visual al guardar una edición
-                redirectAttributes.addFlashAttribute("exito", "💾 Datos actualizados correctamente.");
+            if (optEmp.isPresent()) {
+                Empleado emp = optEmp.get();
+                admin.actualizarDatosEmpleado(emp, nombre, departamento, salario, funciones, jefeDirecto);
+
+                // Guardamos los cambios en MySQL
+                empleadoRepository.save(emp);
+
+                redirectAttributes.addFlashAttribute("exito", "💾 Datos actualizados correctamente en la Base de Datos.");
             }
-
         }
 
         return "redirect:/";
@@ -185,20 +187,18 @@ public class HomeController {
     // FLUJO DE APROBACIÓN: SOLICITAR AUMENTO
     // ==========================================
     @PostMapping("/solicitarAumento")
-    public String solicitarAumento(@RequestParam String idEmpleado,
+    public String solicitarAumento(@RequestParam Long idEmpleado, // Cambiado a Long
                                    @RequestParam double montoAumento,
                                    RedirectAttributes redirectAttributes) {
 
-        // 1. Buscamos a qué empleado le quieren subir el sueldo
-        // (Nota: Asegúrate de usar el método que tengas en tu servicio para buscar por ID)
-        Empleado empleado = empleadoService.buscarPorNumero(idEmpleado);
+        Optional<Empleado> optEmp = empleadoRepository.findById(idEmpleado);
 
-        if (empleado != null && montoAumento > 0) {
-            // 2. Metemos el dinero al "bolsillo temporal"
+        if (optEmp.isPresent() && montoAumento > 0) {
+            Empleado empleado = optEmp.get();
             empleado.setAumentoPendiente(montoAumento);
 
-            // 3. Guardamos los cambios (si tu método para actualizar se llama diferente, cámbialo aquí)
-            //empleadoService.actualizar(empleado);
+            // Guardamos en MySQL
+            empleadoRepository.save(empleado);
 
             redirectAttributes.addFlashAttribute("exito", "⏳ Solicitud enviada: Aumento de $" + montoAumento + " pendiente de autorización.");
         } else {
@@ -207,31 +207,40 @@ public class HomeController {
 
         return "redirect:/";
     }
+
     // ==========================================
     // FLUJO DE APROBACIÓN: GERENTE AUTORIZA
     // ==========================================
     @PostMapping("/autorizarAumento")
-    public String autorizarAumento(@RequestParam String idEmpleado,
-                                   @RequestParam String idGerente,
+    public String autorizarAumento(@RequestParam Long idEmpleado, // Cambiado a Long
+                                   @RequestParam Long idGerente,  // Cambiado a Long
                                    RedirectAttributes redirectAttributes) {
 
-        // Buscamos a los dos actores de esta historia
-        Empleado empleado = empleadoService.buscarPorNumero(idEmpleado);
-        Empleado gerenteActual = empleadoService.buscarPorNumero(idGerente);
+        Optional<Empleado> optEmp = empleadoRepository.findById(idEmpleado);
+        Optional<Empleado> optGerente = empleadoRepository.findById(idGerente);
 
-        // Verificamos que el gerente que aprobó realmente sea de la clase Gerente
-        if (empleado != null && gerenteActual instanceof Gerente) {
+        if (optEmp.isPresent() && optGerente.isPresent()) {
+            Empleado empleado = optEmp.get();
+            Empleado gerenteActual = optGerente.get();
 
-            // ¡Usamos el método exclusivo de la clase hija (Polimorfismo en acción)!
-            boolean aprobado = ((Gerente) gerenteActual).autorizarAumento(empleado);
+            // Verificamos que sea un Gerente el que autoriza
+            if (gerenteActual instanceof Gerente) {
 
-            if (aprobado) {
-                redirectAttributes.addFlashAttribute("exito", "✅ ¡Aumento autorizado! El nuevo sueldo de " + empleado.getNombre() + " es de $" + empleado.getSalario());
+                // Polimorfismo en acción
+                boolean aprobado = ((Gerente) gerenteActual).autorizarAumento(empleado);
+
+                if (aprobado) {
+                    // Si se aprueba, guardamos los cambios de salario en MySQL
+                    empleadoRepository.save(empleado);
+                    redirectAttributes.addFlashAttribute("exito", "✅ ¡Aumento autorizado! El nuevo sueldo de " + empleado.getNombre() + " es de $" + empleado.getSalario());
+                } else {
+                    redirectAttributes.addFlashAttribute("error", "⚠️ Este empleado no tenía aumentos pendientes.");
+                }
             } else {
-                redirectAttributes.addFlashAttribute("error", "⚠️ Este empleado no tenía aumentos pendientes.");
+                redirectAttributes.addFlashAttribute("error", "⛔ Error de permisos. Solo un Gerente puede autorizar aumentos.");
             }
         } else {
-            redirectAttributes.addFlashAttribute("error", "⛔ Error de permisos. Solo un Gerente puede autorizar aumentos.");
+            redirectAttributes.addFlashAttribute("error", "⛔ Error al encontrar los datos del empleado o gerente.");
         }
 
         return "redirect:/";

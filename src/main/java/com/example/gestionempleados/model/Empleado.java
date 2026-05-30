@@ -2,8 +2,21 @@ package com.example.gestionempleados.model;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import jakarta.persistence.*;
+
+@Entity // Le dice a Spring "esta clase va a ser una tabla"
+@Table(name = "empleados") // Opcional, pero le da un nombre bonito en plural a la tabla
+@Inheritance(strategy = InheritanceType.JOINED)
 
 public class Empleado {
+
+    // 👇 AQUÍ ESTÁ LA LLAVE PRIMARIA QUE FALTABA
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Le decimos a SQL que el número de empleado no se puede repetir
+    @Column(unique = true, nullable = false)
 
     protected String numeroEmpleado;
     protected String nombre;
@@ -36,6 +49,9 @@ public class Empleado {
         this.funciones = funciones;
         this.jefeDirecto = jefeDirecto;
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getNumeroEmpleado() { return numeroEmpleado; }
     public String getNombre() { return nombre; }

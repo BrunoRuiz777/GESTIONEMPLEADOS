@@ -41,7 +41,7 @@
             <p style="color: #7b341e; font-size: 0.9em; margin-bottom: 20px;">Consulta tu información.</p>
             <form th:action="@{/loginEmpleado}" method="post">
                 <label>
-                    <input type="text" name="idEmpleado" placeholder="Tu número de ID (Ej: 15151)" required>
+                    <input type="number" name="idEmpleado" placeholder="Tu ID numérico (Ej: 1)" required>
                 </label>
                 <button type="submit" style="background-color: #ed8936;">Entrar al Directorio</button>
             </form>
@@ -80,7 +80,7 @@
     <div th:if="${isAdmin}">
         <h2>Registrar Nuevo Empleado</h2>
         <form th:action="@{/agregar}" th:object="${empleado}" method="post" class="form-registro">
-            <div><label for="reg_id">ID de Empleado</label><input type="text" id="reg_id" th:field="*{numeroEmpleado}" required></div>
+            <div><label for="reg_id">N° de Gafete</label><input type="text" id="reg_id" th:field="*{numeroEmpleado}" required></div>
             <div><label for="reg_nom">Nombre Completo</label><input type="text" id="reg_nom" th:field="*{nombre}" required></div>
             <div><label for="reg_dep">Departamento</label><input type="text" id="reg_dep" th:field="*{departamento}" required></div>
             <div><label for="reg_sal">Salario Mensual</label><input type="number" step="0.01" id="reg_sal" th:field="*{salario}" required></div>
@@ -107,6 +107,13 @@
                 <label>Universidad (Solo Becarios):</label>
                 <label>
                     <input type="text" name="universidad">
+                </label>
+            </div>
+
+            <div>
+                <label>Presupuesto Área (Solo Gerentes):</label>
+                <label>
+                    <input type="number" step="0.01" name="presupuestoArea" value="0.0">
                 </label>
             </div>
 
@@ -142,8 +149,8 @@
                     <td th:text="'+$' + ${emp.aumentoPendiente}" style="color: #059669; font-weight: bold; font-size: 1.1em;"></td>
                     <td>
                         <form th:action="@{/autorizarAumento}" method="post" style="margin: 0;">
-                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
-                            <input type="hidden" name="idGerente" th:value="${empleadoActual.numeroEmpleado}">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.id}">
+                            <input type="hidden" name="idGerente" th:value="${empleadoActual.id}">
                             <button type="submit" style="background-color: #059669; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                                 ✅ Aprobar Aumento
                             </button>
@@ -160,34 +167,34 @@
             <table>
                 <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>ID BD</th>
+                    <th>N° Gafete</th>
                     <th>Nombre</th>
                     <th>Depto.</th>
                     <th>Ingreso</th>
                     <th>Estatus</th>
                     <th>Antigüedad</th>
                     <th>Vacaciones</th>
+                    <th>Jerarquía</th>
                     <th>Puesto</th>
-                    <th>Universidad</th>
-                    <th>Horas</th>
                     <th>Jefe Directo</th>
                     <th>Sueldo</th>
                     <th th:if="${isAdmin}">Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="emp : ${empleados}" th:if="${isAdmin or (isEmpleado and empleadoActual != null and (empleadoActual.tipo == 'Gerente' or emp.numeroEmpleado == empleadoActual.numeroEmpleado))}">
-
+                <tr th:each="emp : ${empleados}" th:if="${isAdmin or (isEmpleado and empleadoActual != null and (empleadoActual.tipo == 'Gerente' or emp.id == empleadoActual.id))}">
+                    <td th:text="${emp.id}" style="color: #94a3b8; font-size: 0.8em;"></td>
                     <td th:text="${emp.numeroEmpleado}" style="font-weight: bold; color: #4a5568;"></td>
 
                     <td>
                         <span class="view-text" th:text="${emp.nombre}"></span>
-                        <label><input th:if="${isAdmin}" type="text" name="nombre" th:value="${emp.nombre}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                        <label><input th:if="${isAdmin}" type="text" name="nombre" th:value="${emp.nombre}" th:attr="form=|form-edit-${emp.id}|" class="edit-input"></label>
                     </td>
 
                     <td>
                         <span class="view-text" th:text="${emp.departamento}"></span>
-                        <label><input th:if="${isAdmin}" type="text" name="departamento" th:value="${emp.departamento}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                        <label><input th:if="${isAdmin}" type="text" name="departamento" th:value="${emp.departamento}" th:attr="form=|form-edit-${emp.id}|" class="edit-input"></label>
                     </td>
 
                     <td th:text="${emp.fechaIngreso != null ? #temporals.format(emp.fechaIngreso, 'dd/MM/yyyy') : 'N/A'}"></td>
@@ -198,30 +205,21 @@
 
                     <td th:text="${emp.vacaciones} + ' días'" style="color: #2b6cb0; font-weight: 600;"></td>
 
+                    <td th:text="${emp.tipo}" style="color: #8b5cf6; font-weight: bold;"></td>
                     <td>
                         <span class="view-text" th:text="${emp.funciones}"></span>
-                        <label><input th:if="${isAdmin}" type="text" name="funciones" th:value="${emp.funciones}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
-                    </td>
-
-                    <td>
-                        <span th:if="${emp.tipo == 'Becario'}" th:text="${emp.universidad}" style="color: #64748b; font-weight: 500;"></span>
-                        <span th:if="${emp.tipo != 'Becario'}">-</span>
-                    </td>
-
-                    <td>
-                        <span th:if="${emp.tipo == 'Becario'}" th:text="${emp.horasServicio} + ' hrs'" style="color: #6366f1; font-weight: bold;"></span>
-                        <span th:if="${emp.tipo != 'Becario'}">-</span>
+                        <label><input th:if="${isAdmin}" type="text" name="funciones" th:value="${emp.funciones}" th:attr="form=|form-edit-${emp.id}|" class="edit-input"></label>
                     </td>
 
                     <td>
                         <span class="view-text" th:text="${emp.jefeDirecto}"></span>
-                        <label><input th:if="${isAdmin}" type="text" name="jefeDirecto" th:value="${emp.jefeDirecto}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" class="edit-input"></label>
+                        <label><input th:if="${isAdmin}" type="text" name="jefeDirecto" th:value="${emp.jefeDirecto}" th:attr="form=|form-edit-${emp.id}|" class="edit-input"></label>
                     </td>
 
                     <td>
                         <span class="view-text" th:text="'$' + ${emp.salario}"></span>
                         <div th:if="${isAdmin}" class="edit-input" style="display:none; padding:0; border:none; background:transparent;">
-                            $<label><input type="number" step="0.01" name="salario" th:value="${emp.salario}" th:attr="form=|form-edit-${emp.numeroEmpleado}|" style="width: 80px; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #64748b;" readonly></label>
+                            $<label><input type="number" step="0.01" name="salario" th:value="${emp.salario}" th:attr="form=|form-edit-${emp.id}|" style="width: 80px; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #64748b;" readonly></label>
                         </div>
                     </td>
 
@@ -230,15 +228,15 @@
                             ✏️ Modificar
                         </button>
 
-                        <form th:id="|form-edit-${emp.numeroEmpleado}|" th:action="@{/actualizarEmpleado}" method="post" class="form-guardar-custom" style="display: none; margin: 0;">
-                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
+                        <form th:id="|form-edit-${emp.id}|" th:action="@{/actualizarEmpleado}" method="post" class="form-guardar-custom" style="display: none; margin: 0;">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.id}">
                             <button type="submit" style="background-color: #f59e0b; color: white; padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">
                                 💾 Guardar
                             </button>
                         </form>
 
                         <form th:action="@{/solicitarAumento}" method="post" style="display: inline-block; margin-top: 10px;">
-                            <input type="hidden" name="idEmpleado" th:value="${emp.numeroEmpleado}">
+                            <input type="hidden" name="idEmpleado" th:value="${emp.id}">
                             <label><input type="number" step="0.01" name="montoAumento" placeholder="$ Monto" required style="width: 85px; padding: 6px; border-radius: 4px; border: 1px solid #10b981;"></label>
                             <button type="submit" style="background-color: #10b981; color: white; padding: 6px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">
                                 📈 Pedir Aumento
@@ -253,7 +251,6 @@
 </div>
 
 <script>
-    // noinspection JSUnusedGlobalSymbols
     function activarEdicion(botonClickeado) {
         const fila = botonClickeado.closest('tr');
         if(!fila) return;

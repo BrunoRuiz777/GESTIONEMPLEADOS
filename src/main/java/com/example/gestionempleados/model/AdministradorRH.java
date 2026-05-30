@@ -1,11 +1,19 @@
 package com.example.gestionempleados.model;
 
 import java.time.LocalDate;
+import jakarta.persistence.*; // Importamos las herramientas de JPA
 
+@Entity
+@Table(name = "administradores_rh") // Su propia tabla en la base de datos
 public class AdministradorRH extends Empleado {
 
     private String nivelPrivilegio;
     private String claveSistema;
+
+    // CONSTRUCTOR VACÍO OBLIGATORIO PARA JPA
+    public AdministradorRH() {
+        super();
+    }
 
     public AdministradorRH(String numeroEmpleado, String nombre, double salario,
                            LocalDate fechaIngreso, String nivelPrivilegio, String claveSistema) {
@@ -42,7 +50,7 @@ public class AdministradorRH extends Empleado {
         if (this.nivelPrivilegio.equals("ALTO")) {
             double nuevoSalario = empleadoDestino.getSalario() * (1 + (porcentajeAumento / 100));
             empleadoDestino.setSalario(nuevoSalario);
-            System.out.println("✅ Aumento del " + porcentajeAumento + "% aplicado.");
+            System.out.println("✅ Aumento del " + porcentajeAumento + "% applied.");
         }
     }
 

@@ -1,10 +1,19 @@
 package com.example.gestionempleados.model;
 
 import java.time.LocalDate;
+import jakarta.persistence.*; // Importamos las herramientas de JPA
 
+@Entity
+@Table(name = "becarios") // Su propia tabla en la base de datos
 public class Becario extends Empleado {
+
     private String universidad;
     private int horasServicio;
+
+    // CONSTRUCTOR VACÍO OBLIGATORIO PARA JPA
+    public Becario() {
+        super();
+    }
 
     public Becario(String numeroEmpleado, String nombre, String departamento, double salario,
                    LocalDate fechaIngreso, LocalDate fechaSalida, String funciones,
@@ -15,7 +24,8 @@ public class Becario extends Empleado {
 
         // ATRIBUTOS EXCLUSIVOS: Guardamos lo que es propio del becario
         this.universidad = universidad;
-        this.horasServicio = horasServicio; }
+        this.horasServicio = horasServicio;
+    }
 
     public String getUniversidad() {
         return universidad;
@@ -34,6 +44,6 @@ public class Becario extends Empleado {
     }
 
     public void reportarHoras() {
-            System.out.println( "El becario " + getNombre() + " de la universidad " + universidad + "ha reportado " + horasServicio + "horas." );
-        }
+        System.out.println( "El becario " + getNombre() + " de la universidad " + universidad + " ha reportado " + horasServicio + " horas." );
     }
+}
